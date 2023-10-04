@@ -34,44 +34,8 @@
     </form>
 
     <script>
-      //   function formSubmit(event) {
-      //     event.preventDefault();
-      //     console.log("submit", event, document.querySelector("form"));
-      //     document.querySelector("form")?.submit();
-      //     return false;
-      //   }
-
-      fileInfo = null;
-
       window.onload = () => {
-        //
-        console.log("window loaded");
-
-        fileInfo = null;
-
-        // document.querySelector("form").addEventListener(
-        //   "submit",
-        //   (ev) => {
-        //     console.log("got back");
-        //     setTimeout(() => {
-        //       window.history.back();
-        //     }, 1000);
-        //   },
-        //   true
-        // );
-
-        var test = { name: "John" };
-        // var xmlHttp = new XMLHttpRequest();
-        // xmlHttp.open("POST", "http://localhost:3000/pdf", false); // false for synchronous request
-        // xmlHttp.setRequestHeader("Content-type", "application/json");
-        // xmlHttp.send(JSON.parse(JSON.stringify(test)));
-
-        // axios.post("http://localhost:3000/pdf", test).then((resp) => {
-        //   console.log("Got resp", resp);
-        // });
-
         document.getElementById("btn-submit").addEventListener("click", () => {
-          console.log("clicked submit", fileInfo);
           axios
             .post(
               "http://localhost:3000/pdf",
@@ -81,27 +45,7 @@
               console.log("Got resp", resp);
             });
         });
-
-        document
-          .getElementById("file-upload")
-          .addEventListener("change", handleFileSelect, false);
       };
-
-      function handleFileSelect(evt) {
-        let files = evt.target.files; // FileList object
-        console.log("selected...", files);
-        fileInfo = files;
-      }
-
-      //   //     fetch("http://localhost:3000/pdf", {
-      //   //       method: "POST",
-      //   //       Headers: {
-      //   //         "Content-Type": "application/json",
-      //   //       },
-      //   //       body: JSON.parse(JSON.stringify({ test: "whatup..." })),
-      //   //     });
-      //   //   };
-      //
     </script>
   </body>
 </html>

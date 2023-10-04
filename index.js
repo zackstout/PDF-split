@@ -6,15 +6,21 @@ const downloadPath = path.resolve("./download");
 const { setTimeout } = require("node:timers/promises");
 const express = require("express");
 const bodyParser = require("body-parser");
-const pdf = require("pdf-parse");
+
 const multer = require("multer");
+
+mostRecentUploadFile = null;
+isUploadComplete = false;
+
 const upload = multer({
   storage: multer.diskStorage({
     destination: function (req, file, cb) {
       cb(null, "uploads/");
     },
     filename: function (req, file, cb) {
-      cb(null, Date.now() + ".pdf"); //Appending .jpg
+      const fileName = Date.now() + ".pdf";
+      mostRecentUploadFile = fileName;
+      cb(null, fileName);
     },
   }),
 });
@@ -42,45 +48,29 @@ app.listen(PORT, () => {
   console.log("Thx for listening on", PORT);
 });
 
-app.post("/pdf", upload.single("file"), (req, res) => {
-  //   console.log(
-  //     "Got file..",
-  //     Object.keys(req.body).length,
-  //     Object.values(req.body)
-  //   );
-  //   useSmallPdfToUnlockFile(req.body);
+app.post("/pdf", upload.single("file"), async (req, res) => {
+  console.log("uploaded files....??", mostRecentUploadFile);
 
-  console.log("uploaded files....??");
+  // Shoot, this doesn't quite work, because of the "on" handler....
+  useSmallPdfToUnlockFile(`./uploads/${mostRecentUploadFile}`);
 
-  //   const raw = JSON.stringify(req.body);
+  const itv = setInterval(() => {
+    if (isUploadComplete) {
+      console.log("It's done!!! smallpdf is done! we have unlocked it!!!");
+      clearInterval(itv);
+      const fileId = mostRecentUploadFile.split(".")[0];
+      splitPdf(`download/${fileId}-unlocked.pdf`);
 
-  //   let buff = Buffer.from(raw, "base64");
-
-  //   useSmallPdfToUnlockFile(raw);
-
-  //   fs.writeFile("./download/testing_this_out.pdf", buff, () => {
-  //     console.log("done....");
-  //   });
-
-  //   pdf(buff).then((data) => {
-  //     console.log("data from pdf...", data, "and buff...", buff);
-  //     fs.writeFile("./download/testing_this_out.pdf", data, () => {
-  //       console.log("done....");
-  //     });
-  //   });
-
-  res.sendStatus(200);
+      res.sendStatus(200);
+    }
+  }, 100);
 });
 
 /**
  * TODO...
  *
- * - Need to deploy a server app... somehow
- * - Need frontend to accept, idk, title, and then upload the pdf file.
- * - Then we need to send that file through our "useSmallPdf" function,
- * download that file,
- * and then send that into our splitPdf function.
- * - And then we need to download all those files... on the client... as a zip? Idk...
+ * - Need to deploy a server app... somehow (that will come with issues, like axios request...)
+ * - We are so close!!! Just need to zip up the downloaded subdocuments, and send back to client. Wow!!!
  */
 
 const desiredSubdocumentsRaw = `1-3: Contact Information
@@ -113,11 +103,11 @@ const desiredSubdocuments = desiredSubdocumentsRaw.split("\n").map((line) => {
 // ================================================================
 
 async function splitPdf(pathToPdf) {
-  const docmentAsBytes = await fs.promises.readFile(pathToPdf);
+  const documentAsBytes = await fs.promises.readFile(pathToPdf);
 
   // Load your PDFDocument
   // Oh, we can just... ignore encryption?? No... it doesn't work. Prints blank pages haha.
-  const pdfDoc = await PDFDocument.load(docmentAsBytes);
+  const pdfDoc = await PDFDocument.load(documentAsBytes);
 
   for (const { title, range } of desiredSubdocuments) {
     // console.log("title", title, range);
@@ -140,7 +130,8 @@ function writePdfBytesToFile(fileName, pdfBytes) {
 /**
  * Absolutely cannot believe that this works lol
  */
-async function useSmallPdfToUnlockFile(pdfFileToUnlock) {
+async function useSmallPdfToUnlockFile(pathToFileToUnlock) {
+  isUploadComplete = false;
   console.log("we have called usesmallpdf");
   const browser = await puppeteer.launch({
     headless: false,
@@ -155,9 +146,7 @@ async function useSmallPdfToUnlockFile(pdfFileToUnlock) {
 
   // OOooh this HAS to be a string.... so I guess we have to download the file.... to fs....
   //   const fileToUpload = "./test.pdf";
-  const fileToUpload = pdfFileToUnlock;
-
-  await elementHandle.uploadFile(fileToUpload);
+  await elementHandle.uploadFile(pathToFileToUnlock);
 
   await page.waitForSelector("input[type=checkbox]");
 
@@ -195,17 +184,19 @@ async function useSmallPdfToUnlockFile(pdfFileToUnlock) {
     });
 
     // Give it enough time to actually download before closing the browser
-    await setTimeout(2000);
+    await setTimeout(3000);
 
     await browser.close();
+
+    isUploadComplete = true;
   });
 }
 
-const run = async () => {
-  //   useSmallPdfToUnlockFile();
-  await splitPdf("test-unlocked.pdf");
+// const run = async () => {
+//   //   useSmallPdfToUnlockFile();
+//   await splitPdf("test-unlocked.pdf");
 
-  //   console.log(desiredSubdocuments);
-};
+//   //   console.log(desiredSubdocuments);
+// };
 
-// run();
+// // run();
