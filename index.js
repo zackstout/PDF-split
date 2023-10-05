@@ -6,8 +6,9 @@ const downloadPath = path.resolve("./download");
 const { setTimeout } = require("node:timers/promises");
 const express = require("express");
 const bodyParser = require("body-parser");
-
+const archiver = require("archiver");
 const multer = require("multer");
+const AdmZip = require("adm-zip");
 
 mostRecentUploadFile = null;
 isUploadComplete = false;
@@ -41,6 +42,8 @@ app.use(
 app.use(bodyParser.json({ limit: "50mb" }));
 app.use(bodyParser.raw());
 
+app.use(require("connect-livereload")({ ignore: ["download", ".zip"] }));
+
 // app.use(express.json({limit: '50mb'}));
 // app.use(express.urlencoded({limit: '50mb'}));
 
@@ -49,19 +52,82 @@ app.listen(PORT, () => {
 });
 
 app.post("/pdf", upload.single("file"), async (req, res) => {
-  console.log("uploaded files....??", mostRecentUploadFile);
+  console.log("The current file id:", mostRecentUploadFile);
 
   // Shoot, this doesn't quite work, because of the "on" handler....
   useSmallPdfToUnlockFile(`./uploads/${mostRecentUploadFile}`);
 
-  const itv = setInterval(() => {
+  const itv = setInterval(async () => {
     if (isUploadComplete) {
-      console.log("It's done!!! smallpdf is done! we have unlocked it!!!");
+      console.log("Ready to split pdf into subdocuments.");
       clearInterval(itv);
       const fileId = mostRecentUploadFile.split(".")[0];
-      splitPdf(`download/${fileId}-unlocked.pdf`);
+      await splitPdf(`download/${fileId}-unlocked.pdf`);
+      console.log("Subdocs are prepared.");
 
-      res.sendStatus(200);
+      // const zip = new AdmZip();
+
+      // fs.readdirSync(`./download/${fileId}`, (err, files) => {
+      //   files.forEach((fileName) => {
+      //     zip.addLocalFile(`./download/${fileId}/${fileName}`);
+      //   });
+      // });
+
+      // const zipFileContents = zip.toBuffer();
+
+      // res.writeHead(200, {
+      //   "Content-Disposition": `attachment; filename="target.zip"`,
+      //   "Content-Type": "application/zip",
+      // });
+
+      // res.end(zipFileContents);
+
+      // const { pipeline } = require("stream");
+
+      // Determine where to put the zip file on the server, before we send to client
+      const output = fs.createWriteStream("download/target.zip");
+      const archive = archiver("zip");
+
+      output.on("close", function () {
+        console.log("Zip size is ", archive.pointer() + " total bytes");
+        console.log(
+          "Archiver has been finalized and the output file descriptor has closed."
+        );
+
+        // res.end(output);
+
+        // res.sendFile("download/target.zip", { root: __dirname });
+        const result = fs.readFileSync("download/target.zip");
+        // const data = new Buffer(result, "base64");
+        // res.end(data);
+        res.send(result);
+        // res.end();
+      });
+
+      archive.on("error", function (err) {
+        throw err;
+      });
+
+      archive.pipe(output);
+      // pipeline(archive, res, () => {
+      //   console.log("whatup?");
+      // });
+      // archive.pipe(res);
+
+      // append files from a sub-directory, putting its contents at the root of archive
+      archive.directory(`download/${fileId}`, false);
+
+      // Testing the hypothesis that smaller zips might transfer ok....
+      // archive.append(
+      //   fs.createReadStream(`./download/${fileId}/Therapy Fee.pdf`),
+      //   {
+      //     name: "thing.pdf",
+      //   }
+      // );
+
+      archive.finalize();
+
+      // res.sendStatus(200);
     }
   }, 100);
 });
@@ -71,6 +137,8 @@ app.post("/pdf", upload.single("file"), async (req, res) => {
  *
  * - Need to deploy a server app... somehow (that will come with issues, like axios request...)
  * - We are so close!!! Just need to zip up the downloaded subdocuments, and send back to client. Wow!!!
+ *
+ * - Should be able to NEVER save anything to disk.... right???
  */
 
 const desiredSubdocumentsRaw = `1-3: Contact Information
@@ -104,6 +172,8 @@ const desiredSubdocuments = desiredSubdocumentsRaw.split("\n").map((line) => {
 
 async function splitPdf(pathToPdf) {
   const documentAsBytes = await fs.promises.readFile(pathToPdf);
+  const fileId = pathToPdf.split("/").at(-1).split(".")[0].split("-")[0];
+  // console.log("split pdf...", fileId);
 
   // Load your PDFDocument
   // Oh, we can just... ignore encryption?? No... it doesn't work. Prints blank pages haha.
@@ -117,8 +187,13 @@ async function splitPdf(pathToPdf) {
       subDocument.addPage(p);
     }
     const pdfBytes = await subDocument.save();
-    await writePdfBytesToFile(`./download/${title}.pdf`, pdfBytes);
+    // Ahh yes this is crucial
+    if (!fs.existsSync(`./download/${fileId}`)) {
+      fs.mkdirSync(`./download/${fileId}`);
+    }
+    await writePdfBytesToFile(`./download/${fileId}/${title}.pdf`, pdfBytes);
   }
+  return Promise.resolve();
 }
 
 function writePdfBytesToFile(fileName, pdfBytes) {
@@ -132,9 +207,9 @@ function writePdfBytesToFile(fileName, pdfBytes) {
  */
 async function useSmallPdfToUnlockFile(pathToFileToUnlock) {
   isUploadComplete = false;
-  console.log("we have called usesmallpdf");
+  console.log("Called usesmallpdf");
   const browser = await puppeteer.launch({
-    headless: false,
+    headless: true,
   });
 
   const page = await browser.newPage();
@@ -157,6 +232,8 @@ async function useSmallPdfToUnlockFile(pathToFileToUnlock) {
     document.querySelectorAll(".unlock-panel-component>div")[1]?.click();
   });
 
+  console.log("Attempting to unlock...");
+
   // Wait for it to unlock
 
   page.on("framenavigated", async (frame) => {
@@ -175,6 +252,8 @@ async function useSmallPdfToUnlockFile(pathToFileToUnlock) {
       downloadPath: downloadPath,
     });
 
+    console.log("Unlocked! About to download...");
+
     await newPage.evaluate(() => {
       document.querySelectorAll("a").forEach((anchor) => {
         if (anchor.href.includes("files.smallpdf.com")) {
@@ -184,9 +263,11 @@ async function useSmallPdfToUnlockFile(pathToFileToUnlock) {
     });
 
     // Give it enough time to actually download before closing the browser
-    await setTimeout(3000);
+    await setTimeout(5000);
 
     await browser.close();
+
+    console.log("Closing puppeteer browser.");
 
     isUploadComplete = true;
   });
