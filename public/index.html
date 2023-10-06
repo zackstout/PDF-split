@@ -73,6 +73,11 @@
       //   console.log(`${fileCount} files uploaded`, other);
       // });
 
+      /**
+       * TODO: Play around with Uppy some more.... might be worth it for the nice looking UI,
+       * and the drag and drop!
+       */
+
       document
         .getElementById("btn-submit")
         .addEventListener("click", handleSubmit);
@@ -84,11 +89,6 @@
       });
 
       async function handleSubmit() {
-        // const f = document.getElementById("upload").value;
-        // const f2 = new FormData(document.querySelector("form"));
-
-        // console.log("f", f2, document.getElementById("upload").value, fileInfo);
-
         // Yesss!!!
         const reader = new FileReader();
         reader.readAsArrayBuffer(fileInfo[0]);
