@@ -72,6 +72,7 @@ def split():
     if (os.path.exists(uploadsDir)):
         shutil.rmtree(uploadsDir)
 
+    # NOTE: Must use os.path.join(cwd, zipFileName) instead here
     return send_file(zipFilename,
             mimetype = 'zip',
             as_attachment = True)
@@ -135,3 +136,24 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 
+# NOTE: I gotta believe we can get this to work with files just in-memory..
+# That is, never have to save them to disk at all...
+
+
+# Ok we're soooo close to having deployment working... but it is choking on cannot find zip...
+# So weird... so it seems like it got to use temp_uploads just fine.... but it couldn't then find the zip???
+# We saw that error a few times in development...just thought we fixed it.....
+
+# But yeah in any case, we seem to be chewing through CPU, maybe because of storage..??
+
+# OMG all we had to do was join cwd with the zip file name when send_file-ing!!!!
+# Now.... it just blocks it because Chrome calls it a dangerous file....
+
+# Ok yeah... We just had to turn off security settings... Kind of sketchy but oh well...
+
+# But yeah.. it would be great to get it working without the file storage... oh well
+
+# AHA! WE DID IT IN SCRIPT2.PY!!
+
+# And remember in console we need export FLASK_APP={fileName}, like export FLASK_APP=script2,
+# in order for `flask run` to run the proper file.

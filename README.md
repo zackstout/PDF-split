@@ -8,6 +8,10 @@ I couldn't get it to work with Javascript.
 
 However, Python made it super easy. See `script.py`. Use `flask run` to run the app in dev mode.
 
+We got it working without any files on the disk in `script2.py`.
+
+And remember in console we need `export FLASK_APP={fileName}`, like `export FLASK_APP=script2`, in order for `flask run` to run the proper file.
+
 ## Issues
 
 I couldn't get it to work. The main obstacle was dealing with encrypted PDFs. Apparently many PDFs have a default encryption, so that they can be opened and viewed with any PDF-viewing software, but not necessarily accessed programatically.
