@@ -5,6 +5,8 @@ from zipfile36 import ZipFile, ZIP_DEFLATED
 
 import os
 
+import re
+
 app = Flask(__name__)
 
 # So I had to pip3 install PyPDF2, and pip3 install pycryptodome==3.15.0
@@ -15,12 +17,6 @@ from PyPDF2 import PdfWriter, PdfReader, PdfFileReader
 @app.route('/', methods=["POST", "GET"])
 def index():
 
-    # if request.method == "POST":
-    #     print("hit the split")
-    #     projectpath = request.form['file']
-    #     print("projectpath", projectpath)
-    #     return 200
-    # return render_template('index.html')
     return """
         <form
        
@@ -30,46 +26,45 @@ def index():
       >
         <input id="upload" type="file" name="file" accept="application/pdf" />
 
+        <input type="text" placeholder="File prefix" name="prefix"/>
+
         <input type="submit" value="Submit">
       </form>
     """
 
-# @app.route('/success/<name>')
-# def success(name):
-#     return 'welcome %s' % name
  
 @app.route("/split", methods=["POST"])
 def split():
-    print("hit the split...!!!")
-    file = request.files['file']
-    print("file", file)
+    # print("hit the split...!!!")
 
+    # Ah, it is here, not on request.form
+    file = request.files['file']
+
+    prefix = request.form['prefix']
+    prefix = re.sub('/', '-', prefix)
+    prefix = re.sub(' ', '_', prefix)
+    prefix = re.sub('\.', '_', prefix)
+
+    print("prefix", prefix)
+
+    # Split up the pdf into subdocuments, then zip them up and send back to client: 
     processPDF(PdfReader(file))
 
-    zipf = ZipFile('SplitPdf.zip','w', ZIP_DEFLATED)
+    zipf = ZipFile(prefix+ '.zip','w', ZIP_DEFLATED)
     for root,dirs, files in os.walk('temp_uploads/'):
         for file in files:
-            zipf.write(file)
+            # print(file)
+            # It is odd to me that we have to use the same name of the folder it comes from here.. oh we can pass second argument
+            # Ahhhh note we cannot allow "/" to appear in the prefix.
+            filename, extension = file.split(".")
+            zipf.write("temp_uploads/" + file, prefix + "_" + filename + extension)
     zipf.close()
-    return send_file('SplitPdf.zip',
+    return send_file(prefix + '.zip',
             mimetype = 'zip',
             # attachment_filename= 'Name.zip',
             as_attachment = True)
 
-    # return 'Ahoy!'
-
-# @app.route('/login/', methods=['POST', 'GET'])
-# def login():
-#     if request.method == 'POST':
-#         user = request.form['nm']
-#         return redirect(url_for('success', name=user))
-#     else:
-#         user = request.args.get('nm')
-#         print("user",user)
-#         return redirect(url_for('success', name=user))
  
-
-
 print('what up')
 
 
@@ -102,6 +97,7 @@ def setupPagesDict():
         pagesDict[title] = realRange;
     return pagesDict
 
+
 def processPDF(inputpdf):
     pagesDict = setupPagesDict()
 
@@ -119,24 +115,14 @@ def processPDF(inputpdf):
 
 
 
+# Testing with input from file system:
 # inputpdf = PdfReader(open("public/test.pdf", "rb"))
-
 # processPDF(inputpdf)
-
-
 
 
 # main driver function
 if __name__ == '__main__':
- 
     # run() method of Flask class runs the application 
     # on the local development server.
     app.run(debug=True)
 
-
-
-
-# Ommmmg we are SO CLOSE
-# We have the web server running with Flask, we see how to deploy for free...
-# We have the split working...
-# We just need to zip up those files and send them back to client...
