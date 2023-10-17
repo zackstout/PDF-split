@@ -6,6 +6,7 @@ from zipfile36 import ZipFile, ZIP_DEFLATED
 import os
 
 import re
+import shutil
 
 app = Flask(__name__)
 
@@ -47,10 +48,26 @@ def split():
 
     print("prefix", prefix)
 
+
+    cwd = os.getcwd()
+    zipDir = os.path.join(cwd, "zip_upload")
+    uploadsDir = os.path.join(cwd, "temp_uploads")
+
+
+    if (not os.path.exists(uploadsDir)):
+        os.mkdir(uploadsDir)
+
     # Split up the pdf into subdocuments, then zip them up and send back to client: 
     processPDF(PdfReader(file))
 
-    zipf = ZipFile(prefix+ '.zip','w', ZIP_DEFLATED)
+    if (os.path.exists(zipDir)):
+        shutil.rmtree(zipDir)
+   
+    os.mkdir(zipDir)
+
+    zipFilename = 'zip_upload/' + prefix + '.zip'
+
+    zipf = ZipFile(zipFilename,'w', ZIP_DEFLATED)
     for root,dirs, files in os.walk('temp_uploads/'):
         for file in files:
             # print(file)
@@ -59,7 +76,13 @@ def split():
             filename, extension = file.split(".")
             zipf.write("temp_uploads/" + file, prefix + "_" + filename + extension)
     zipf.close()
-    return send_file(prefix + '.zip',
+
+    if (os.path.exists(uploadsDir)):
+        shutil.rmtree(uploadsDir)
+
+    # Hmm.. when to remove the zip file from server? On new request? Yeah sure.
+
+    return send_file(zipFilename,
             mimetype = 'zip',
             # attachment_filename= 'Name.zip',
             as_attachment = True)
@@ -125,4 +148,5 @@ if __name__ == '__main__':
     # run() method of Flask class runs the application 
     # on the local development server.
     app.run(debug=True)
+
 

@@ -2,3 +2,4 @@ node_modules
 download/*
 uploads/*
 temp_uploads/*
+*.zip

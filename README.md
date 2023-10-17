@@ -4,7 +4,9 @@ The goal is to let the user supply a PDF file, and then split that into subdocum
 
 The closest I got was the `splitPDF` function in the `index.js` server file. This works as long as the file that is passed into it is not encrypted.
 
-I apologize that the code is a mess. I tried a bunch of different iterations of things and didn't pay enough attention to staying organized.
+I couldn't get it to work with Javascript.
+
+However, Python made it super easy. See `script.py`. Use `flask run` to run the app in dev mode.
 
 ## Issues
 
