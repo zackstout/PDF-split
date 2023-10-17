@@ -209,7 +209,7 @@ async function useSmallPdfToUnlockFile(pathToFileToUnlock) {
   isUploadComplete = false;
   console.log("Called usesmallpdf");
   const browser = await puppeteer.launch({
-    headless: true,
+    headless: false,
   });
 
   const page = await browser.newPage();

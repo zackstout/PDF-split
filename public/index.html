@@ -16,6 +16,9 @@
     <script src="./jszip.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/downloadjs@1.4.7/download.min.js"></script>
 
+    <!-- <script src="https://www.jsdelivr.com/package/npm/pdfjs-dist"></script> -->
+    <script src="./pdf.js"></script>
+
     <style>
       body {
         padding: 0;
@@ -64,6 +67,21 @@
         cursor: pointer;
         background: lightblue;
       }
+
+      #error {
+        height: 100vh;
+        width: 100vh;
+        z-index: 1000;
+        position: absolute;
+        top: 0;
+        left: 0;
+        background-repeat: no-repeat;
+        background-size: 100% 100%;
+        background-position: center;
+        background-origin: 0% 0;
+        display: none;
+        background-image: url("https://media.makeameme.org/created/youre-not-authorized-8b29bd98c8.jpg");
+      }
     </style>
   </head>
   <body>
@@ -87,14 +105,17 @@
         <div id="sidebar"></div>
 
         <div id="main">
-          <button id="uppy">Upload a PDF</button>
+          <!-- <button id="uppy">Upload a PDF</button> -->
+
+          <canvas></canvas>
         </div>
       </div>
     </div>
 
+    <div id="error"></div>
+
     <script type="module">
       const { Dashboard, Webcam, Tus } = Uppy;
-      // import { PDFDocument } from "pdf-lib";
 
       const uppy = new Uppy.Uppy({
         debug: true,
@@ -103,27 +124,17 @@
           allowedFileTypes: [".pdf"],
         },
       }).use(Dashboard, { trigger: "#uppy" });
-      // .use(Webcam, { target: Dashboard })
-      // .use(Tus, { endpoint: "https://tusd.tusdemo.net/files/" });
 
       uppy.on("upload", (data) => {
-        // Do something
-        console.log("Upload data", data);
-
         const id = data.fileIDs[0];
 
-        console.log("file", uppy.getFile(id));
-
+        // console.log("file", uppy.getFile(id));
         const reader = new FileReader();
         reader.readAsArrayBuffer(uppy.getFile(id).data);
         reader.onload = async () => {
           console.log("Loaded reader data!");
           zipAndDownload(reader.result);
         };
-      });
-
-      uppy.on("success", function (fileCount, other) {
-        console.log(`${fileCount} files uploaded`, other);
       });
 
       const desiredSubdocumentsRaw = `1-3: Contact Information
@@ -155,57 +166,89 @@
           return { title, range: realRange };
         });
 
-      /**
-       * TODO: Play around with Uppy some more.... might be worth it for the nice looking UI,
-       * and the drag and drop!
-       *
-       * YESSS WE GOT THERE
-       */
+      const pdfjsLib = window["pdfjs-dist/build/pdf"];
+
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "./pdf.worker.js";
+
+      console.log("pdfJS...", window.pdfjsLib);
+
+      const canvas = document.querySelector("canvas");
+      const ctx = canvas.getContext("2d");
+
+      const task = pdfjsLib.getDocument("./test.pdf");
+      task.promise.then((x) => {
+        console.log("Loaded", x);
+
+        x.getData().then((arrayBuffer) => {
+          console.log("We got it bro", arrayBuffer);
+          zipAndDownload(arrayBuffer);
+        });
+
+        // This works perfect to render the PDF, showing that we do in fact have access to it
+        x.getPage(1).then((page) => {
+          console.log("PAGE 1", page);
+
+          page.getTextContent().then((content) => {
+            console.log("page content", content);
+          });
+
+          let viewport = page.getViewport({ scale: 1 });
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          let renderContext = {
+            canvasContext: ctx,
+            viewport: viewport,
+          };
+          page.render(renderContext);
+        });
+      });
 
       async function zipAndDownload(documentAsBytes) {
+        // Ahhhhh fudge, even if we get bytes from PDFJS....... it still shows as unauthorized. AUGH.
+
         const { PDFDocument } = window.PDFLib;
-        const pdfDoc = await PDFDocument.load(documentAsBytes);
-        console.log("got doc...", pdfDoc);
+        try {
+          const pdfDoc = await PDFDocument.load(documentAsBytes);
+          console.log("got doc...", pdfDoc);
 
-        const zip = new JSZip();
-        console.log("zip...", zip);
+          /**
+           * This is PDF-lib code that works fine either on client or server:
+           * (However, the PDF must not be encrypted.)
+           */
 
-        for (const { title, range } of desiredSubdocuments) {
-          // console.log("title", title, range);
-          const subDocument = await PDFDocument.create();
-          const copiedPages = await subDocument.copyPages(pdfDoc, range);
-          for (const p of copiedPages) {
-            subDocument.addPage(p);
-          }
-          const pdfBytes = await subDocument.save();
-          // Ahh yes this is crucial
-          // if (!fs.existsSync(`./download/${fileId}`)) {
-          //   fs.mkdirSync(`./download/${fileId}`);
+          // const zip = new JSZip();
+          // console.log("zip...", zip);
+
+          // for (const { title, range } of desiredSubdocuments) {
+          //   // console.log("title", title, range);
+          //   const subDocument = await PDFDocument.create();
+          //   const copiedPages = await subDocument.copyPages(pdfDoc, range);
+          //   for (const p of copiedPages) {
+          //     subDocument.addPage(p);
+          //   }
+          //   const pdfBytes = await subDocument.save();
+
+          //   zip.file(`${title}.pdf`, pdfBytes, { binary: true });
           // }
-          // await writePdfBytesToFile(
-          //   `./download/${fileId}/${title}.pdf`,
-          //   pdfBytes
-          // );
-          zip.file(`${title}.pdf`, pdfBytes, { binary: true });
+
+          // const content = await zip.generateAsync({ type: "binarystring" });
+
+          // download(content, "testZip.zip", "application/zip");
+        } catch (e) {
+          console.log("inner error", e);
+          document.getElementById("error").style.display = "block";
+
+          // TODO: DISPLAY ERROR TO USER
         }
-
-        // Ahhhhhh finally, we got there!!
-        // Now we just have to do it with all subdocuments, and we should be golden... Hell yeah baby
-        // zip.file("testOutput.pdf", pdfDoc.save(), { binary: true });
-        const content = await zip.generateAsync({ type: "binarystring" });
-
-        download(content, "testZip.zip", "application/zip");
       }
 
-      // document
-      //   .getElementById("btn-submit")
-      //   .addEventListener("click", handleSubmit);
+      document.getElementById("error").addEventListener("click", () => {
+        document.getElementById("error").style.display = "none";
+      });
 
-      // let fileInfo = null;
-
-      // document.getElementById("upload").addEventListener("change", (ev) => {
-      //   fileInfo = ev.target.files;
-      // });
+      /**
+       * I think this is neat and I want to remember it lol.. so weird you can't grab the fileInfo off the dom element NOW, though...
+       */
 
       // async function handleSubmit() {
       //   // Yesss!!!
