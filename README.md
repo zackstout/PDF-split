@@ -38,3 +38,7 @@ reader.onload = async () => {
 ## Ideas for future iterations
 
 It seems like we should be able to programmatically "strip" the encryption from a PDF, perhaps using something like [qpdf](https://github.com/qpdf/qpdf), and then pass it into our `splitPDF` method.
+
+It might also work to write a Node app that could be exported as an executable file and then run directly on the user's machine, instead of running on a web app.
+
+Or, you could avoid the need to export to executable, as long as Node (or Python, or whatever) were downloaded on the user's machine.
