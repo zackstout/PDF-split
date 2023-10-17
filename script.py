@@ -1,23 +1,18 @@
 
 from flask import Flask, redirect, url_for, request, render_template, send_file
-
 from zipfile36 import ZipFile, ZIP_DEFLATED
-
 import os
-
 import re
 import shutil
-
-app = Flask(__name__)
-
 # So I had to pip3 install PyPDF2, and pip3 install pycryptodome==3.15.0
-
 from PyPDF2 import PdfWriter, PdfReader, PdfFileReader
 
+app = Flask(__name__)
 
 @app.route('/', methods=["POST", "GET"])
 def index():
 
+    # Just hard code the HTML here since I can't figure out how to send a separate HTML file...
     return """
         <form
        
@@ -34,32 +29,32 @@ def index():
     """
 
  
+# This is called when the user submits the form defined above
 @app.route("/split", methods=["POST"])
 def split():
-    # print("hit the split...!!!")
-
-    # Ah, it is here, not on request.form
+    # Grab data from the form
     file = request.files['file']
-
     prefix = request.form['prefix']
+
+    # Remove dangerous characters from the user-entered file prefix
     prefix = re.sub('/', '-', prefix)
     prefix = re.sub(' ', '_', prefix)
     prefix = re.sub('\.', '_', prefix)
-
     print("prefix", prefix)
 
-
+    # Grab references to the temp upload folders so we can delete/re-create them
     cwd = os.getcwd()
     zipDir = os.path.join(cwd, "zip_upload")
     uploadsDir = os.path.join(cwd, "temp_uploads")
 
-
+    # Clear out the temp_uploads folder
     if (not os.path.exists(uploadsDir)):
         os.mkdir(uploadsDir)
 
-    # Split up the pdf into subdocuments, then zip them up and send back to client: 
+    # Split up the pdf into subdocuments, then zip them up and send back to client:
     processPDF(PdfReader(file))
 
+    # Remove zip file from previous request, if it exists
     if (os.path.exists(zipDir)):
         shutil.rmtree(zipDir)
    
@@ -70,9 +65,6 @@ def split():
     zipf = ZipFile(zipFilename,'w', ZIP_DEFLATED)
     for root,dirs, files in os.walk('temp_uploads/'):
         for file in files:
-            # print(file)
-            # It is odd to me that we have to use the same name of the folder it comes from here.. oh we can pass second argument
-            # Ahhhh note we cannot allow "/" to appear in the prefix.
             filename, extension = file.split(".")
             zipf.write("temp_uploads/" + file, prefix + "_" + filename + extension)
     zipf.close()
@@ -80,16 +72,12 @@ def split():
     if (os.path.exists(uploadsDir)):
         shutil.rmtree(uploadsDir)
 
-    # Hmm.. when to remove the zip file from server? On new request? Yeah sure.
-
     return send_file(zipFilename,
             mimetype = 'zip',
-            # attachment_filename= 'Name.zip',
             as_attachment = True)
 
- 
-print('what up')
 
+# print('what up')
 
 pagesDictString = '''1-3: Contact Information
 4: IPP Participation Agreement
@@ -136,12 +124,9 @@ def processPDF(inputpdf):
             output.write(outputStream)
 
 
-
-
 # Testing with input from file system:
 # inputpdf = PdfReader(open("public/test.pdf", "rb"))
 # processPDF(inputpdf)
-
 
 # main driver function
 if __name__ == '__main__':
