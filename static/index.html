@@ -4,9 +4,67 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="stylesheet" href="static/index.css" />
     <title>PDF</title>
   </head>
   <body>
-    <div>Ahoy</div>
+    <div id="container">
+      <h2>Split that PDF</h2>
+
+      <form enctype="multipart/form-data" method="post" action="/split">
+        <p class="label">Please choose a PDF file.</p>
+        <input
+          id="upload"
+          type="file"
+          name="file"
+          accept="application/pdf"
+          class="mb-4"
+        />
+
+        <p class="label">
+          This text will appear in the name of each generated file.
+        </p>
+        <input
+          id="prefix"
+          type="text"
+          placeholder="File prefix"
+          name="prefix"
+          class="mb-4"
+        />
+
+        <p class="label">Please select a document type.</p>
+        <div class="radio mb-4">
+          <div>
+            <input
+              type="radio"
+              id="survivor"
+              name="doc_type"
+              value="survivor"
+              checked
+            />
+             
+            <label for="survivor">Victim Survivor Program Intake Packet</label>
+          </div>
+          <div>
+            <input
+              type="radio"
+              id="intervention"
+              name="doc_type"
+              value="intervention"
+            />
+             
+            <label for="intervention"
+              >Intervention and Prevention Intake Packet</label
+            >
+          </div>
+        </div>
+
+        <input type="submit" value="Submit" id="submit-btn" />
+      </form>
+
+      <script>
+        // NOTE I think we need to refactor this to use AJAX (rather than a form action) if we want to show a loader, etc..
+      </script>
+    </div>
   </body>
 </html>

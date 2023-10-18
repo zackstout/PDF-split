@@ -6,54 +6,14 @@ import os
 import re
 import shutil
 # So I had to pip3 install PyPDF2, and pip3 install pycryptodome==3.15.0
-from PyPDF2 import PdfWriter, PdfReader, PdfFileReader
+from PyPDF2 import PdfWriter, PdfReader
 
 app = Flask(__name__)
 
-# Just hard code the HTML here since I can't figure out how to send a separate HTML file...
 @app.route('/', methods=["POST", "GET"])
 def index():
-
-    # NOTE I think we need to refactor this to use AJAX if we want to show a loader, etc..
-    return """
-    <link rel="stylesheet" href="/static/index.css"/>
-
-    <div id="container">
-
-      <h2>Split that PDF</h2>
-
-      <form
-        enctype="multipart/form-data"
-        method="post"
-        action="/split"
-      >
-        <p class="label">Please choose a PDF file.</p>
-        <input id="upload" type="file" name="file" accept="application/pdf" class="mb-4"/>
-
-        <p class="label">This text will appear in the name of each generated file.</p>
-        <input id="prefix" type="text" placeholder="File prefix" name="prefix" class="mb-4"/>
-
-        <p class="label">Please select a document type.</p>
-        <div class="radio mb-4">
-            <div>
-                <input type="radio" id="survivor" name="doc_type" value="survivor" checked>
-                <label for="survivor">Survivor</label>
-            </div>
-            <div>
-                <input type="radio" id="intervention" name="doc_type" value="intervention">
-                <label for="intervention">Intervention</label>
-            </div>
-        </div>
-
-        <input type="submit" value="Submit" id="submit-btn">
-      </form>
-    
-    </div>
-
-      <script lang="js">
-        console.log("Hello from javascript in a string!");
-      </script>
-    """
+    cwd = os.getcwd()
+    return send_file(os.path.join(cwd, "static/index.html"))
 
 # This is called when the user submits the form defined above
 @app.route("/split", methods=["POST"])
