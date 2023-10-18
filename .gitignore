@@ -3,3 +3,4 @@ download/*
 uploads/*
 temp_uploads/*
 *.zip
+__pycache__
