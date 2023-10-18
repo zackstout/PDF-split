@@ -1,10 +1,14 @@
 
+# This is from the deployed version that I KNOW FOR A FACT was working
+
+
 from flask import Flask, redirect, url_for, request, render_template, send_file
-from zipfile36 import ZipFile, ZIP_DEFLATED, ZipInfo
+from zipfile36 import ZipFile, ZIP_DEFLATED
+import os
 import re
+import shutil
 # So I had to pip3 install PyPDF2, and pip3 install pycryptodome==3.15.0
 from PyPDF2 import PdfWriter, PdfReader, PdfFileReader
-from io import BytesIO
 
 app = Flask(__name__)
 
@@ -14,7 +18,7 @@ def index():
     # Just hard code the HTML here since I can't figure out how to send a separate HTML file...
     return """
         <form
-       
+
         enctype="multipart/form-data"
         method="post"
         action="/split"
@@ -27,7 +31,7 @@ def index():
       </form>
     """
 
- 
+
 # This is called when the user submits the form defined above
 @app.route("/split", methods=["POST"])
 def split():
@@ -41,65 +45,40 @@ def split():
     prefix = re.sub('\.', '_', prefix)
     print("prefix", prefix)
 
-    print("Processing PDF...")
-    pagesDict = setupPagesDict()
-    memory_file = BytesIO()
-    inputpdf = PdfReader(file)
+    # Grab references to the temp upload folders so we can delete/re-create them
+    cwd = os.getcwd()
+    zipDir = os.path.join(cwd, "zip_upload")
+    uploadsDir = os.path.join(cwd, "temp_uploads")
 
-    # writer = PdfWriter()
-    # writer.add_page(inputpdf.pages[0])
-    # with BytesIO() as bytes_stream:
-    #     writer.write(bytes_stream)
-        
-    # bytes_stream.seek(0)
-    # return send_file(bytes_stream,
-    #       mimetype = 'zip',
-    #       download_name = prefix,
-    #       as_attachment = True)
+    # Clear out the temp_uploads folder
+    if (not os.path.exists(uploadsDir)):
+        os.mkdir(uploadsDir)
 
+    # Split up the pdf into subdocuments, then zip them up and send back to client:
+    processPDF(PdfReader(file))
 
+    # Remove zip file from previous request, if it exists
+    if (os.path.exists(zipDir)):
+        shutil.rmtree(zipDir)
 
-    # outpdf = PdfWriter()
-    # outpdf.add_page(inputpdf.pages[0])
-    # outpdf.write(memory_file)
+    os.mkdir(zipDir)
 
-    # zf = ZipFile(memory_file, 'w')
+    zipFilename = 'zip_upload/' + prefix + '.zip'
 
-    # zf.close()
+    zipf = ZipFile(zipFilename, 'w', ZIP_DEFLATED)
+    for root,dirs, files in os.walk('temp_uploads/'):
+        for file in files:
+            filename, extension = file.split(".")
+            zipf.write("temp_uploads/" + file, prefix + "_" + filename + "." + extension)
+    zipf.close()
 
-    # open("whatever.zip", "wb").write(memory_file.getbuffer())
+    if (os.path.exists(uploadsDir)):
+        shutil.rmtree(uploadsDir)
 
-    # zf.writestr(title, )
+    print("Trying to send zip...!!!", zipFilename, os.path.exists(zipDir))
 
-
-
-    with ZipFile(memory_file, 'w', ZIP_DEFLATED) as zf:
-    #     # Create a subdocument for each slice of pages, and save it to the zip
-    #     for title in pagesDict:
-    #         output = PdfWriter()
-    #         realRange = pagesDict[title]
-    #         for i in range(realRange[0], realRange[1]+1):
-    #             # print(i)
-    #             output.add_page(inputpdf.pages[i-1])
-
-        output = PdfWriter()
-        output.add_page(inputpdf.pages[0])
-    
-        # data = ZipInfo(prefix + "_" + "test.pdf")
-        # data.compress_type = ZIP_DEFLATED
-             # Writes all bytes to bytes-stream
-        response_bytes_stream = BytesIO()
-        output.write(response_bytes_stream)
-        response_bytes_stream.seek(0)
-        zf.writestr(prefix+"_"+"test.pdf", response_bytes_stream.getvalue())
-        zf.close()
-            
-    # zf.close()
-    memory_file.seek(0) 
-
-    return send_file(memory_file,
+    return send_file(os.path.join(cwd, zipFilename),
             mimetype = 'zip',
-            download_name = prefix,
             as_attachment = True)
 
 
@@ -122,7 +101,9 @@ pagesDictString = '''1-3: Contact Information
 22: Insurance Information
 23: Insurance Authorization'''
 
-# Some really dumb parsing code that could probably be a one-liner in Python..
+# pagesDictString
+
+
 def setupPagesDict():
     pagesDict = {}
     for line in pagesDictString.split("\n"):
@@ -134,13 +115,29 @@ def setupPagesDict():
         pagesDict[title] = realRange;
     return pagesDict
 
+
+def processPDF(inputpdf):
+    pagesDict = setupPagesDict()
+
+    print("Processing PDF...")
+
+    for title in pagesDict:
+        output = PdfWriter()
+        realRange = pagesDict[title]
+        for i in range(realRange[0], realRange[1]+1):
+            # print(i)
+            output.add_page(inputpdf.pages[i-1])
+        with open("temp_uploads/%s.pdf" % title, "wb") as outputStream:
+            output.write(outputStream)
+
+
 # Testing with input from file system:
 # inputpdf = PdfReader(open("public/test.pdf", "rb"))
 # processPDF(inputpdf)
 
 # main driver function
 if __name__ == '__main__':
-    # run() method of Flask class runs the application 
+    # run() method of Flask class runs the application
     # on the local development server.
     app.run(debug=True)
 

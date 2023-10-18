@@ -1,0 +1,55 @@
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+h2 {
+  font-size: 2rem;
+  margin: 4rem 0;
+}
+
+#container {
+  display: flex;
+  flex-direction: column;
+  justify-content: start;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+}
+
+form input {
+  font-size: 1.3rem;
+}
+
+form .label {
+  font-size: 0.8rem;
+  font-style: italic;
+  margin-bottom: 0.3rem;
+}
+
+.mb-4 {
+  margin-bottom: 1rem;
+}
+
+.radio {
+  display: flex;
+  flex-direction: column;
+}
+
+.radio div {
+  display: flex;
+}
+
+#submit-btn {
+  background: rgb(2, 141, 2);
+  color: white;
+  padding: 0.3rem;
+  border-radius: 3px;
+  cursor: pointer;
+}

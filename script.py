@@ -157,3 +157,6 @@ if __name__ == '__main__':
 
 # And remember in console we need export FLASK_APP={fileName}, like export FLASK_APP=script2,
 # in order for `flask run` to run the proper file.
+
+
+# Ahhhh noooo I spoke too soon. It doesn't actually work....Like when you open the zip.
