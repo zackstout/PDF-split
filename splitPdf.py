@@ -113,7 +113,7 @@ def setupPagesDict(doc_type = "survivor"):
 
 
 def processPDF(inputpdf, uploadsDir, doc_type):
-    # Clear out the temp_uploads folder
+    # Ensure the temp_uploads folder exists
     if (not os.path.exists(uploadsDir)):
         os.mkdir(uploadsDir)
 
@@ -134,7 +134,7 @@ def processPDF(inputpdf, uploadsDir, doc_type):
 
 
 def zipUp(prefix, zipDir):
-    # Remove zip file from previous request, if it exists
+    # Remove zip file that was created by previous request, if it exists
     if (os.path.exists(zipDir)):
         shutil.rmtree(zipDir)
     os.mkdir(zipDir)
